@@ -1,7 +1,6 @@
 # Laporan Praktikum Analisis Data E-Commerce
 
-**Kelompok:**
-**Elang Dipa Purwadhiyaksa (14)**
+
 **Sayoga Sindhunata Narutama (30)**
 
 ## 1. Business Question
