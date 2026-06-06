@@ -1,0 +1,233 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+df = pd.read_csv('data_praktikum_analisis_data.csv')
+print(df.columns.tolist())
+print(df.head())
+df.info()
+df.isnull().sum()
+df = df[df['Price_Per_Unit'] > 0]
+
+df['Order_Date'] = pd.to_datetime(df['Order_Date'])
+
+df['Month'] = df['Order_Date'].dt.to_period('M').astype(str)
+monthly_sales = df.groupby('Month')['Total_Sales'].sum()
+
+plt.figure(figsize=(10,5))
+plt.plot(monthly_sales.index, monthly_sales.values, marker='o', color='b')
+plt.title('Tren Penjualan Bulanan')
+plt.xticks(rotation=45)
+plt.show()
+
+correlation = df[['Total_Sales', 'Ad_Budget']].corr()
+sns.heatmap(correlation, annot=True, cmap='coolwarm')
+plt.title('Peta Korelasi Antar Variabel')
+plt.show()
+
+avg_price = df['Price_Per_Unit'].mean()
+avg_quantity = df['Quantity'].mean()
+
+underperformer = df[
+    (df['Price_Per_Unit'] > avg_price) &
+    (df['Quantity'] < avg_quantity)
+]
+
+print("\nProduk Underperformer:")
+print(underperformer)
+
+plt.figure(figsize=(10,5))
+
+sns.scatterplot(
+    data=df,
+    x='Price_Per_Unit',
+    y='Quantity',
+    color='blue',
+    label='Produk Normal'
+)
+
+sns.scatterplot(
+    data=underperformer,
+    x='Price_Per_Unit',
+    y='Quantity',
+    color='red',
+    label='Underperformer'
+)
+
+plt.title('Identifikasi Produk Underperformer')
+plt.xlabel('Price Per Unit')
+plt.ylabel('Quantity')
+plt.legend()
+
+plt.show()
+
+latest_date = df['Order_Date'].max()
+
+rfm = df.groupby('CustomerID').agg({
+    'Order_Date': lambda x: (latest_date - x.max()).days,  # Recency
+    'Order_ID': 'count',                                   # Frequency
+    'Total_Sales': 'sum'                                   # Monetary
+})
+
+rfm.columns = ['Recency', 'Frequency', 'Monetary']
+
+print("\nRFM Analysis:")
+print(rfm.head())
+
+plt.figure(figsize=(10,5))
+
+sns.scatterplot(
+    data=rfm,
+    x='Frequency',
+    y='Monetary',
+    size='Recency',
+    hue='Recency',
+    palette='coolwarm'
+)
+
+plt.title('Segmentasi Pelanggan (RFM Analysis)')
+plt.xlabel('Frequency')
+plt.ylabel('Monetary')
+
+plt.show()
+
+category_analysis = df.groupby('Product_Category').agg({
+    'Total_Sales': 'sum',
+    'Ad_Budget': 'sum'
+})
+
+category_analysis['Efficiency'] = (
+    category_analysis['Total_Sales'] /
+    category_analysis['Ad_Budget']
+)
+
+category_analysis = category_analysis.sort_values(
+    by='Efficiency'
+)
+
+print("\nAnalisis Kontribusi Kategori:")
+print(category_analysis)
+
+plt.figure(figsize=(10,5))
+
+plt.barh(
+    category_analysis.index,
+    category_analysis['Efficiency']
+)
+
+plt.title('Efisiensi Kategori Produk')
+plt.xlabel('Efficiency (Sales / Ad Budget)')
+plt.ylabel('Category')
+
+plt.show()
+
+median_ad = df['Ad_Budget'].median()
+
+high_ads = df[df['Ad_Budget'] > median_ad]
+low_ads = df[df['Ad_Budget'] <= median_ad]
+
+avg_high_sales = high_ads['Total_Sales'].mean()
+avg_low_sales = low_ads['Total_Sales'].mean()
+
+print("\n=== Uji Hipotesis Sederhana ===")
+print(f"Median Ad Budget : {median_ad}")
+print(f"Rata-rata Sales (Iklan Tinggi) : {avg_high_sales}")
+print(f"Rata-rata Sales (Iklan Rendah) : {avg_low_sales}")
+
+comparison = pd.DataFrame({
+    'Kelompok': ['Iklan Tinggi', 'Iklan Rendah'],
+    'Average_Sales': [avg_high_sales, avg_low_sales]
+})
+
+plt.figure(figsize=(8,5))
+
+sns.barplot(
+    data=comparison,
+    x='Kelompok',
+    y='Average_Sales'
+)
+
+plt.title('Perbandingan Rata-rata Total Sales')
+plt.ylabel('Average Total Sales')
+
+plt.show()
+
+import datetime as dt
+
+snapshot_date = df['Order_Date'].max() + dt.timedelta(days=1)
+
+rfm = df.groupby('CustomerID').agg({
+    'Order_Date': lambda x: (snapshot_date - x.max()).days,
+    'Order_ID': 'count',
+    'Total_Sales': 'sum'
+})
+
+rfm.columns = ['Recency', 'Frequency', 'Monetary']
+
+rfm['R_Score'] = pd.qcut(
+    rfm['Recency'],
+    5,
+    labels=[5,4,3,2,1]
+)
+
+rfm['F_Score'] = pd.qcut(
+    rfm['Frequency'].rank(method='first'),
+    5,
+    labels=[1,2,3,4,5]
+)
+
+rfm['M_Score'] = pd.qcut(
+    rfm['Monetary'],
+    5,
+    labels=[1,2,3,4,5]
+)
+
+rfm['RFM_Group'] = (
+    rfm['R_Score'].astype(str) +
+    rfm['F_Score'].astype(str) +
+    rfm['M_Score'].astype(str)
+)
+
+print("\n=== RFM Analysis Advanced ===")
+print(rfm.head())
+
+import datetime as dt
+
+snapshot_date = df['Order_Date'].max() + dt.timedelta(days=1)
+
+rfm = df.groupby('CustomerID').agg({
+    'Order_Date': lambda x: (snapshot_date - x.max()).days,
+    'Order_ID': 'count',
+    'Total_Sales': 'sum'
+})
+
+rfm.columns = ['Recency', 'Frequency', 'Monetary']
+
+# Scoring
+rfm['R_Score'] = pd.qcut(
+    rfm['Recency'],
+    5,
+    labels=[5,4,3,2,1]
+)
+
+rfm['F_Score'] = pd.qcut(
+    rfm['Frequency'].rank(method='first'),
+    5,
+    labels=[1,2,3,4,5]
+)
+
+rfm['M_Score'] = pd.qcut(
+    rfm['Monetary'],
+    5,
+    labels=[1,2,3,4,5]
+)
+
+# Gabungkan skor
+rfm['RFM_Group'] = (
+    rfm['R_Score'].astype(str) +
+    rfm['F_Score'].astype(str) +
+    rfm['M_Score'].astype(str)
+)
+
+print("\n=== RFM Analysis Advanced ===")
+print(rfm.head())
